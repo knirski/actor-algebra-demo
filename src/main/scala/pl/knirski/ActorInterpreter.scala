@@ -8,23 +8,19 @@ import scala.concurrent.{Future, Promise}
 
 
 // Original author: https://gist.github.com/Baccata/e4a200443448f6b09c9c7b6c405a3d89
-class ActorInterpreter[G[_], StateData](
+class ActorInterpreter[F[_], StateData](
     initialData: StateData,
-    stateInterpreter: G ~> Lambda[A => State[StateData, A]]
-)(implicit actorSystem: ActorSystem) extends (G ~> Future) {
+    stateInterpreter: F ~> Lambda[A => State[StateData, A]]
+)(implicit actorSystem: ActorSystem) extends (F ~> Future) {
 
-  case class Request[T](value: G[T], promise: Promise[T])
+  case class Request[T](value: F[T], promise: Promise[T])
 
-  private val actor = actorSystem.actorOf(Proxy.props())
+  private val actor = actorSystem.actorOf(Props(new Proxy()))
 
-  override def apply[A](fa: G[A]): Future[A] = {
+  override def apply[A](fa: F[A]): Future[A] = {
     val promise = Promise[A]
     actor ! Request(fa, promise)
     promise.future
-  }
-
-  object Proxy {
-    def props(): Props = Props(new Proxy())
   }
 
   private class Proxy extends Actor {
