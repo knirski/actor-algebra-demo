@@ -1,1 +1,1 @@
-A demonstration of using GADT (Generalized Algebraic Data Types) for transforming a pure stateful computation into an asynchronous effectful computation.
+A demonstration of using State, FunctionK and GADT for transforming a pure stateful computation into an asynchronous effectful computation with Akka Actor.
