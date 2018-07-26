@@ -6,7 +6,6 @@ import cats.~>
 
 import scala.concurrent.{Future, Promise}
 
-
 // Original author: https://gist.github.com/Baccata/e4a200443448f6b09c9c7b6c405a3d89
 class ActorInterpreter[F[_], StateData](
     initialData: StateData,

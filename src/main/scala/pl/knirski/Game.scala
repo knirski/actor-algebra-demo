@@ -4,39 +4,38 @@ import akka.actor.ActorSystem
 import cats._
 import cats.data.State
 import cats.effect.IO
-import pl.knirski.Domain.MatchScore
+import pl.knirski.Domain.GameScore
 import pl.knirski.Protocol._
 
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-
 object Protocol {
 
-  sealed trait MatchOps[A]
-  case class Team1Scored(points: Int) extends MatchOps[Unit]
-  case class Team2Scored(points: Int) extends MatchOps[Unit]
-  case object AnnounceIntermediateResult extends MatchOps[String]
-  case object AnnounceFinalResult extends MatchOps[String]
-  case object Team1Cheated extends MatchOps[IO[Unit]]
-  case object ResetScore extends MatchOps[Unit]
+  sealed trait GameOps[A]
+  case class Team1Scored(points: Int) extends GameOps[Unit]
+  case class Team2Scored(points: Int) extends GameOps[Unit]
+  case object AnnounceIntermediateResult extends GameOps[String]
+  case object AnnounceFinalResult extends GameOps[String]
+  case object Team1Cheated extends GameOps[IO[Unit]]
+  case object ResetScore extends GameOps[Unit]
 
 }
 
 object Domain {
 
-  case class MatchScore(team1: Int, team2: Int)
+  case class GameScore(team1: Int, team2: Int)
 
-  def team1Scored(score: MatchScore, points: Int): MatchScore = score.copy(team1 = score.team1 + points)
+  def team1Scored(score: GameScore, points: Int): GameScore = score.copy(team1 = score.team1 + points)
 
-  def team2Scored(score: MatchScore, points: Int): MatchScore = score.copy(team2 = score.team2 + points)
+  def team2Scored(score: GameScore, points: Int): GameScore = score.copy(team2 = score.team2 + points)
 
-  def team1Cheated(): MatchScore = MatchScore(100, 0)
+  def team1Cheated(): GameScore = GameScore(100, 0)
 
-  def announceIntermediateResult(score: MatchScore): String = s"Result so far $score"
+  def announceIntermediateResult(score: GameScore): String = s"Result so far $score"
 
-  def announceFinalResult(score: MatchScore): String = {
+  def announceFinalResult(score: GameScore): String = {
     if (score.team1 > score.team2) {
       s"Team 1 won, result $score"
     } else if (score.team1 < score.team2) {
@@ -46,20 +45,20 @@ object Domain {
     }
   }
 
-  val initialScore: MatchScore = MatchScore(0, 0)
+  val initialScore: GameScore = GameScore(0, 0)
 
 }
 
 object Effects {
 
-  def reportCheating(score: MatchScore): IO[Unit] =
+  def reportCheating(score: GameScore): IO[Unit] =
     IO { println(s"reporting cheating to FBI, score $score was tampered with ") }
 
 }
 
-object GameInterpreter extends (MatchOps ~> Lambda[A => State[MatchScore, A]]) {
+object GameInterpreter extends (GameOps ~> Lambda[A => State[GameScore, A]]) {
   /*_*/
-  override def apply[A](fa: MatchOps[A]): State[MatchScore, A] = fa match {
+  override def apply[A](fa: GameOps[A]): State[GameScore, A] = fa match {
     case Team1Scored(points) => State.modify { score => Domain.team1Scored(score, points) }
     case Team2Scored(points) => State.modify { score => Domain.team2Scored(score, points) }
     case Team1Cheated => State { _ =>
@@ -78,8 +77,8 @@ object Game extends App {
   implicit val executionContext = ExecutionContext.global
   implicit val actorSystem = ActorSystem("game")
 
-  val gameActor: ActorInterpreter[MatchOps, MatchScore] =
-    new ActorInterpreter[MatchOps, MatchScore](Domain.initialScore, GameInterpreter)
+  val gameActor: ActorInterpreter[GameOps, GameScore] =
+    new ActorInterpreter[GameOps, GameScore](Domain.initialScore, GameInterpreter)
 
   val futureResult =
     for {
